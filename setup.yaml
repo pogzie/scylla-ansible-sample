@@ -1,0 +1,92 @@
+---
+- hosts: all
+  # Fix this. Serializing everything would be slower just to give the first node a chance to init
+  serial: 1
+  tasks:
+   - name: Do a pre-install sanity check - hostname
+     command: hostname
+     changed_when: false
+     register: hostname_output
+   - debug: var=hostname_output.stdout_lines
+
+   - name: Do a pre-install OS config - firewalld
+     command: systemctl stop firewalld
+     changed_when: false
+     register: firewallstop_output
+   - debug: var=firewallstop_output.stdout_lines
+   - name: Do a pre-install OS config - firewalld
+     command: systemctl disable firewalld
+     changed_when: false
+     register: firewalldisable_output
+   - debug: var=firewalldisable_output.stdout_lines
+
+   # Scylla pre-install housekeeping
+   - name: Remove ABRT and confirm
+     command: sudo yum remove abrt -y
+     changed_when: false
+   - name: Install epel-release and confirm
+     command: sudo yum install epel-release -y
+     changed_when: false
+   # NOTE TO SELF: Use the built in ansible add repo function and dont be a savage.
+   - name: Add ScyllaDB repo
+     command: sudo curl -o /etc/yum.repos.d/scylla.repo -L http://downloads.scylladb.com/rpm/centos/scylla-5.2.repo -v
+     changed_when: false
+   - name: Install latest version of ScyllaDB and confirm
+     command: sudo yum install scylla -y
+     changed_when: false
+     register: installpackages_output
+   - debug: var=installpackages_output.stdout_lines
+   - name: Output installed ScyllaDB version
+     command: scylla --version
+     changed_when: false
+     register: version_output
+   - debug: var=version_output.stdout_lines
+
+   # Modifying the scylla.yaml before setup
+   - name: Add cluster name to scylla.yaml
+     ansible.builtin.replace:
+       path: /etc/scylla/scylla.yaml
+       regexp: "#cluster_name: 'Test Cluster'"
+       replace: "cluster_name: 'Ansible Scylla'"
+   - name: Change listen_address in scylla.yaml
+     ansible.builtin.lineinfile:
+       path: /etc/scylla/scylla.yaml
+       regexp: "listen_address: "
+       line: "listen_address: {{ inventory_hostname }}"
+   - name: Change rpc_address in scylla.yaml
+     ansible.builtin.lineinfile:
+       path: /etc/scylla/scylla.yaml
+       regexp: "rpc_address: localhost"
+       line: "rpc_address: {{ inventory_hostname }}"
+   # Add the first host as seed {{ groups['all'][0] }}
+   # Had to cheat the indent for this
+   - name: Change seeds value to reflect first host on scylla.yaml
+     ansible.builtin.lineinfile:
+       path: /etc/scylla/scylla.yaml
+       regexp: '- seeds: "127.0.0.1"'
+       line: '          - seeds: "{{ groups[''all''][0] }}"'
+
+   # Setup, run and version check
+   - name: Run ScyllaDB setup
+     command: scylla_setup --no-raid-setup --online-discard 1 --no-kernel-check --no-verify-package --no-coredump-setup --no-sysconfig-setup --io-setup 0 --no-cpuscaling-setup --no-rsyslog-setup --developer-mode
+     # Setting serial might be best than to throttle a single section just to let the first node initialize
+     #throttle: 1
+     register: setup_output
+   - debug: var=setup_output.stdout_lines
+   - name: Run ScyllaDB as a service
+     command: sudo systemctl start scylla-server
+     register: scyllaservice_output
+   - debug: var=scyllaservice_output.stdout_lines
+
+   # This should not be done
+   - name: Pause for 30 seconds
+     pause:
+       seconds: 60
+
+   # Use nodetool to check the cluster
+   # NOTE TO SELF: nodetool wont be immediately available upon first init. Do a check to see if first setup has completed already.
+   # 	Maybe check the logs for "init - serving" message
+   - name: Check nodetool status
+     command: nodetool status
+     register: nodetool_output
+   - debug: var=nodetool_output.stdout_lines
