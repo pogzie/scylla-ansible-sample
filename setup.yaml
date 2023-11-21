@@ -12,19 +12,14 @@
    - name: Do a pre-install OS config - firewalld
      command: systemctl stop firewalld
      changed_when: false
-     register: firewallstop_output
-   - debug: var=firewallstop_output.stdout_lines
    - name: Do a pre-install OS config - firewalld
      command: systemctl disable firewalld
      changed_when: false
-     register: firewalldisable_output
-   - debug: var=firewalldisable_output.stdout_lines
 
    # Install some tools to help with debugging later on
-   - name: Install latest version of ScyllaDB and confirm
+   - name: Install yum and net-tools to help with debugging
      command: sudo yum install nano net-tools -y
      changed_when: false
-     register: installpackages_output
 
    # Scylla pre-install housekeeping
    - name: Remove ABRT and confirm
@@ -77,12 +72,12 @@
      command: scylla_setup --no-raid-setup --online-discard 1 --no-kernel-check --no-verify-package --no-coredump-setup --no-sysconfig-setup --io-setup 0 --no-cpuscaling-setup --no-rsyslog-setup --developer-mode
      # Setting serial might be best than to throttle a single section just to let the first node initialize
      #throttle: 1
+     changed_when: false
      register: setup_output
    - debug: var=setup_output.stdout_lines
    - name: Run ScyllaDB as a service
      command: sudo systemctl start scylla-server
-     register: scyllaservice_output
-   - debug: var=scyllaservice_output.stdout_lines
+     changed_when: false
 
    # This should not be done
    - name: Pause for 30 seconds
@@ -94,5 +89,6 @@
    # 	Maybe check the logs for "init - serving" message
    - name: Check nodetool status
      command: nodetool status
+     changed_when: false
      register: nodetool_output
    - debug: var=nodetool_output.stdout_lines
