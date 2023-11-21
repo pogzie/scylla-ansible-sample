@@ -20,6 +20,12 @@
      register: firewalldisable_output
    - debug: var=firewalldisable_output.stdout_lines
 
+   # Install some tools to help with debugging later on
+   - name: Install latest version of ScyllaDB and confirm
+     command: sudo yum install nano net-tools -y
+     changed_when: false
+     register: installpackages_output
+
    # Scylla pre-install housekeeping
    - name: Remove ABRT and confirm
      command: sudo yum remove abrt -y

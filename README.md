@@ -34,14 +34,14 @@ Note: Non-system keyspaces don't have the same replication settings, effective o
 
 # Todo
 - Fix the serialized run. For some reason if 1 isnt ready 2 and 3 gets stuck in limbo
-- Fix adding of repo
-- Fix waiting for init so nodetool can be run
+- Fix adding of repo. Use the built in function.
+- Fix waiting for init so nodetool can be run. An alternative would be to issue an Ansible wait til the desired ports are available https://docs.ansible.com/ansible/latest/collections/ansible/builtin/wait_for_module.html 
 - Take one step up the deployment to completely automate the process
-- 3 nodes via Ansible by only using the desired ISO
-- Option for more nodes
-- Option to set desired IP addresses for the desired nodes
-- Option to choose any supported operating system
-- Option to choose any ScyllaaDB version
+- Provision 3 nodes via Ansible by only using the desired ISO in ESXi or vSphere
+- Option for more nodes (this might already be workable, will have to do more tests)
+- Option to set desired IP addresses for the desired nodes (this is for the provisioning process)
+- Option to choose any supported operating system (OS specific commands might need a tweak, using the universal installer should work)
+- Option to choose any ScyllaaDB version (Easily doable with the flag)
 - Option to load sample data
 
 # Issues
