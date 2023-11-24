@@ -9,10 +9,10 @@
      register: hostname_output
    - debug: var=hostname_output.stdout_lines
 
-   - name: Do a pre-install OS config - firewalld
+   - name: Do a pre-install OS config - firewalld stop
      command: systemctl stop firewalld
      changed_when: false
-   - name: Do a pre-install OS config - firewalld
+   - name: Do a pre-install OS config - firewalld disable
      command: systemctl disable firewalld
      changed_when: false
 
@@ -60,6 +60,7 @@
        regexp: "rpc_address: localhost"
        line: "rpc_address: {{ inventory_hostname }}"
    # Add the first host as seed {{ groups['all'][0] }}
+   # Maybe this can be changed so that rather than host all, to isolate the first IP as seed node
    # Had to cheat the indent for this
    - name: Change seeds value to reflect first host on scylla.yaml
      ansible.builtin.lineinfile:
@@ -75,14 +76,26 @@
      changed_when: false
      register: setup_output
    - debug: var=setup_output.stdout_lines
+   # This need to be revised to use the built in functions of ansible (test the one below)
+   # - name: Start scylla-server service
+   #   systemd:
+   #   name: scylla-server
+   #   state: started
+   #   enabled: yes
    - name: Run ScyllaDB as a service
      command: sudo systemctl start scylla-server
      changed_when: false
 
    # This should not be done
-   - name: Pause for 30 seconds
+   - name: Pause for 60 seconds
      pause:
        seconds: 60
+
+   - name: Check if scylla-server is running
+     command: systemctl is-active scylla-server
+     changed_when: false
+     register: isactive
+   - debug: var=isactive.stdout_lines
 
    # Use nodetool to check the cluster
    # NOTE TO SELF: nodetool wont be immediately available upon first init. Do a check to see if first setup has completed already.

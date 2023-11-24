@@ -39,6 +39,7 @@ Note: Non-system keyspaces don't have the same replication settings, effective o
 - Fix waiting for init so nodetool can be run. An alternative would be to issue an Ansible wait til the desired ports are available https://docs.ansible.com/ansible/latest/collections/ansible/builtin/wait_for_module.html 
 - Take one step up the deployment to completely automate the process of provisioning.
 - Provision 3 nodes via Ansible by only using the desired ISO in ESXi or vSphere.
+- Add a retry on checking the status in the event it doesnt start properly.
 - Option for more nodes (this might already be workable, will have to do more tests).
 - Option to set desired IP addresses for the desired nodes (this is for the provisioning process).
 - Option to choose any supported operating system (OS specific commands might need a tweak, using the universal installer should work).

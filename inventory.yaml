@@ -4,6 +4,7 @@ all:
   # Once your nodes have been provisioned, replace it these IPs with the 
   #	IPs of your nodes. The hostname of the nodes will be changed to: scyllaX
   #	where X is the last octet of the IP (ie. scylla1, scylla2, scylla3 and so on)
+  # Might not be best to use this format for hosts. Write it properly.
   hosts:
     192.168.251.1:
     192.168.251.2:
