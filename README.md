@@ -36,7 +36,7 @@ Note: Non-system keyspaces don't have the same replication settings, effective o
 # Todo
 - Fix the serialized run. For some reason if 1 isnt ready 2 and 3 gets stuck in limbo.
 - Fix adding of repo. Use the built in function.
-- Fix waiting for init so nodetool can be run. An alternative would be to issue an Ansible wait til the desired ports are available https://docs.ansible.com/ansible/latest/collections/ansible/builtin/wait_for_module.html 
+- Waiting for service and ports works fine but nodetool fails or reports incorrect number of nodes if not finished joining. Reassess just blazing through everything and waiting for nodetool to report the correct value.
 - Take one step up the deployment to completely automate the process of provisioning.
 - Provision 3 or more nodes via Ansible by only using the desired ISO in ESXi or vSphere. Use built in Ansible functions for this.
 - Add a retry on checking the status in the event it doesnt start properly.

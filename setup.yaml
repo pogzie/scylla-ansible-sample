@@ -9,6 +9,8 @@
      register: hostname_output
    - debug: var=hostname_output.stdout_lines
 
+   # For some reason the firewall is interfering with node-node communication
+   # Look into this in the future
    - name: Do a pre-install OS config - firewalld stop
      command: systemctl stop firewalld
      changed_when: false
@@ -77,30 +79,63 @@
      register: setup_output
    - debug: var=setup_output.stdout_lines
    # This need to be revised to use the built in functions of ansible (test the one below)
-   # - name: Start scylla-server service
-   #   systemd:
-   #   name: scylla-server
-   #   state: started
-   #   enabled: yes
-   - name: Run ScyllaDB as a service
-     command: sudo systemctl start scylla-server
-     changed_when: false
+   - name: Start scylla-server service
+     systemd:
+       name: scylla-server
+       state: started
+       enabled: yes
+   #- name: Run ScyllaDB as a service
+   #  command: sudo systemctl start scylla-server
+   #  changed_when: false
+
+   # Replaced by another command below this, a more proper way to check service status
+   #- name: Check if scylla-server is running
+   #  command: systemctl is-active scylla-server
+   #  changed_when: false
+   #  register: isactive
+   #- debug: var=isactive.stdout_lines
+
+   # Using wait for service is not that effective as it can be started but nodetool will fail. 
+   # Alternatively, checking for port availability might be a better solution
+   - name: Wait for scylla-server to be in started state 
+     service:
+       name: scylla-server 
+       state: started
+     register: scyllaservice
+     until: scyllaservice.status.ActiveState == "active"
+     retries: 5
+     delay: 30
+   - debug: var=scyllaservice.status.ActiveState
+
+   # Note that register doesnt work here
+   # Checking port 7000 might interfere with the join process showing the message in the logs below
+   #  [shard 6] rpc - client 192.168.251.1:59710: server connection dropped: connection is closed
+   - name: Wait for api port to be ready
+     wait_for:
+      # Netstat shows its listening to 127.0.0.1, might as well use that
+      port: 10000
+      host: 127.0.0.1
+      delay: 30
+      # The previous 20 second delay seems to be not enough for nodetool to register the node
+      connect_timeout: 60
+      timeout: 60
 
    # This should not be done
-   # Reduced to 45, improving the service wait check should render this unnecessary
+   # While everything checks out, ports and all, nodetool kinda fails to report a second node joined
+   #    despite the wait. Putting this here until things are figured out.
+   #    example of this behavior is that node 2 shows only 1 node, node 3 only shows 2 nodes and so on
+   #    current assumption seems to be that the node is not yet fully joined thus upon the last node the run would fail
    - name: Pause for 45 seconds
      pause:
        seconds: 45
 
-   - name: Check if scylla-server is running
-     command: systemctl is-active scylla-server
-     changed_when: false
-     register: isactive
-   - debug: var=isactive.stdout_lines
-
    # Use nodetool to check the cluster
    # NOTE TO SELF: nodetool wont be immediately available upon first init. Do a check to see if first setup has completed already.
    # 	Maybe check the logs for "init - serving" message
+   #  A counter argument on waiting on init would be that while the node has initialized, if not joined nodetool
+   #    would not report the correct number of nodes. 
+   #  Im thinking of looping this until UN (or at least UJ - Up and Joining) + the IP is shown.
+   #    something like nodetool status | awk '/^(U|D)(N|L|J|M)/{print $2}'
    - name: Check nodetool status
      command: nodetool status
      changed_when: false
